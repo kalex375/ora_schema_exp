@@ -19,6 +19,14 @@ var OBJECT_NAME varchar2(30)
 var TABLESPACE_REMAP varchar2(2000)
 var SYNONYM_OWNER_REMAP varchar2(2000)
 var vclob clob
+var FILTER_OBJECT_TYPE varchar2(255)
+
+-----------------------------------------------
+--Set additional params
+-----------------------------------------------
+exec :FILTER_OBJECT_TYPE := upper('&1')
+-----------------------------------------------
+
 
 begin
   dbms_output.enable(null);
@@ -49,8 +57,9 @@ declare
      select distinct 'REF_CONSTRAINT' object_type, r.table_name from user_constraints r where r.constraint_type = 'R'
    )
    select distinct
-	   'host rmdir /s /q "exp_schema\&&OWNER\'||o.OBJECT_TYPE||'";' a,
-     'host mkdir "exp_schema\&&OWNER\'||o.OBJECT_TYPE||'";' b
+	 'host rmdir /s /q "exp_schema\&&OWNER\'||o.OBJECT_TYPE||'";' a,
+     'host mkdir "exp_schema\&&OWNER\'||o.OBJECT_TYPE||'";' b,
+	 OBJECT_TYPE
     from 
        (select
          o.OBJECT_NAME,
@@ -89,6 +98,9 @@ declare
 begin
   for cur_rec in cur
   loop
+    if :FILTER_OBJECT_TYPE is not null and instr(:FILTER_OBJECT_TYPE,cur_rec.object_type)=0 then 
+      continue;
+    end if;  
     dbms_output.put_line(cur_rec.a);
     dbms_output.put_line(cur_rec.b);
   end loop;
@@ -130,7 +142,8 @@ declare
       'spool "exp_schema\&&OWNER\'||o.OBJECT_TYPE||'\'||(o.object_name)||'.sql'||'"; ' a6,
       'print vclob' a7,
       'spool off' a8,
-      'set termout on' a9    
+      'set termout on' a9,
+	  OBJECT_TYPE
     from 
        (select
          o.OBJECT_NAME,
@@ -138,6 +151,9 @@ declare
        from  
          user_objects o 
        where 
+	     o.OBJECT_TYPE  in ('PACKAGE',
+                            'PACKAGE BODY') and
+							   
          o.OBJECT_TYPE not in ('INDEX',
                                'TABLE SUBPARTITION',
                                'TABLE PARTITION',
@@ -165,21 +181,24 @@ declare
         t.OBJECT_NAME,
         t.object_type 
       from 
-        tbl_object t) o    
+        tbl_object t where 1=1) o    
       order by  decode(o.OBJECT_TYPE,'TABLE','1','INDEX','2','CONSTRAINT','3','REF_CONSTRAINT',4,o.OBJECT_TYPE), OBJECT_NAME;
       
   l_prev_type varchar2(2000) := '-----';    
 begin
   for cur_rec in cur
   loop
-  
+    if :FILTER_OBJECT_TYPE is not null and instr(:FILTER_OBJECT_TYPE,cur_rec.object_type)=0 then 
+      continue;
+    end if;  
+	
     dbms_output.PUT_LINE('------------------------------------------------');	
       	        
     if cur_rec.a00<>l_prev_type then 
     	dbms_output.PUT_LINE(cur_rec.a0);
     	dbms_output.PUT_LINE(cur_rec.a00);
     	dbms_output.PUT_LINE(cur_rec.a000);                
-      l_prev_type:=cur_rec.a00;
+        l_prev_type:=cur_rec.a00;
     end if;
 
   	dbms_output.PUT_LINE(cur_rec.a1);
@@ -260,13 +279,13 @@ declare
                                'CONSUMER GROUP',
                                'CLUSTER',
                                'TABLE',
-                               'DATABASE LINK')
+                               'DATABASE LINK')  and 1=1
       union 
       select 
         t.OBJECT_NAME,
         t.object_type 
       from 
-        tbl_object t) o    
+        tbl_object t where 1=1 ) o    
       order by  decode(o.OBJECT_TYPE,'TABLE','1','INDEX','2','CONSTRAINT','3','REF_CONSTRAINT',4,o.OBJECT_TYPE), OBJECT_NAME;
       
   l_prev_type varchar2(30):='------';    
@@ -277,6 +296,10 @@ begin
 
   for cur_rec in cur
   loop
+    if :FILTER_OBJECT_TYPE is not null and instr(:FILTER_OBJECT_TYPE,cur_rec.object_type)=0 then 
+      continue;
+    end if;  
+	
   	dbms_output.put_line('prompt /*---------------------------------------------*/');
   	dbms_output.put_line('prompt OBJECT TYPE:'||cur_rec.OBJECT_TYPE);
   	dbms_output.put_line('prompt OBJECT NAME:'||cur_rec.OBJECT_NAME);
@@ -304,4 +327,4 @@ set linesize 100
 @'exp_schema\&&OWNER\tmp_create_dir.tmp';
 @'exp_schema\&&OWNER\tmp_get_sql.tmp';
 /
---exit;
+exit;

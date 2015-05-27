@@ -103,7 +103,7 @@ declare
  begin
    dbms_lob.createtemporary(b, false);
    dbms_lob.createtemporary(c, false);   
-   dbms_java.export_source(dbms_java.longname(p_object_name), b);
+   --dbms_java.export_source(dbms_java.longname(p_object_name), b);
    dbms_lob.append(c,'CREATE OR REPLACE AND COMPILE JAVA SOURCE NAMED "'||NEW_SCHEMA||'"."'||p_object_name||'" AS '||chr(10));
    dbms_lob.append(c,b);   
    dbms_lob.append(c,chr(10)||'/');
